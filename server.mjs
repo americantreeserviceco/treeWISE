@@ -1,9 +1,12 @@
 
 import "dotenv/config";
 import express from "express";
+import { intakeConfig, validateInquiry, saveInquiry, makeRateLimiter } from "./inquiries.mjs";
 import { buildKnowledgeContext } from "./knowledge.mjs";
 
 const app = express();
+const intake = intakeConfig();
+const allowInquiry = makeRateLimiter();
 
 const PORT = Number(process.env.PORT || 3000);
 const OLLAMA_URL = "http://127.0.0.1:11434";
@@ -67,6 +70,48 @@ const safetyNote =
   "cut or remove it. For electrical hazards, stay " +
   "clear and contact the utility. If people are " +
   "in immediate danger, contact emergency services.";
+
+app.get("/api/inquiry/config", (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json({ enabled: intake.enabled, photosSupported: false, delivery: "local-queue" });
+});
+
+app.post("/api/inquiries", async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (!intake.enabled) return res.status(503).json({
+    error: "Online inquiry submission is not enabled. Please use the official contact page or call."
+  });
+
+  // Prevent cross-origin browser submissions. This is not an internet-facing CSRF solution.
+  const origin = req.get("origin");
+  if (origin) {
+    let parsed;
+    try { parsed = new URL(origin); } catch { return res.status(403).json({ error: "Invalid origin." }); }
+    if (parsed.host !== req.get("host") || parsed.protocol !== req.protocol + ":") {
+      return res.status(403).json({ error: "Cross-origin submission blocked." });
+    }
+  }
+  if (!allowInquiry(req.ip || "local")) {
+    return res.status(429).json({ error: "Too many inquiries. Please try again later." });
+  }
+  const parsed = validateInquiry(req.body);
+  if (parsed.spam) return res.status(202).json({ accepted: false, message: "Request received for processing." });
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+  try {
+    const saved = await saveInquiry(parsed.value, intake);
+    return res.status(201).json({
+      accepted: true,
+      reference: saved.id,
+      createdAt: saved.createdAt,
+      status: "saved-locally",
+      deliveredToOffice: false,
+      message: "Inquiry saved to a local queue for staff review. The office has not been notified automatically."
+    });
+  } catch (error) {
+    console.error("Inquiry storage failed:", error.message);
+    return res.status(503).json({ error: "Unable to save your inquiry. Please call or use the official contact page." });
+  }
+});
 
 app.get("/api/health", async (req, res) => {
   try {
