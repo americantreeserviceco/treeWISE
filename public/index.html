@@ -162,6 +162,24 @@ form.addEventListener("submit", async event => {
     }
 
     addMessage("assistant", data.answer);
+    if (Array.isArray(data.sources) && data.sources.length) {
+      const refs = document.createElement("p");
+      refs.className = "message";
+      const title = document.createElement("strong");
+      title.textContent = "General reference topics (not a diagnosis):";
+      refs.append(title, document.createElement("br"));
+      for (const source of data.sources) {
+        if (typeof source.url !== "string" || !/^https:\/\//.test(source.url)) continue;
+        const anchor = document.createElement("a");
+        anchor.href = source.url;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        anchor.textContent = source.title || "Reference";
+        refs.append(anchor, document.createElement("br"));
+      }
+      messages.append(refs);
+      messages.scrollTop = messages.scrollHeight;
+    }
     history.push(
       { role: "user", content: message },
       { role: "assistant", content: data.answer }
