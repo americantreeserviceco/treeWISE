@@ -9,7 +9,14 @@ export function postgresConfig(env = process.env) {
 
 export async function openDatabase(config, importPg = () => import("pg")) {
   if (!config.enabled) return null;
-  const { default: pg } = await importPg();
+  let pg;
+  try {
+    ({ default: pg } = await importPg());
+  } catch {
+    throw new Error(
+      "TREEWISE_STORAGE=postgres needs the pg package. Run `npm install` and restart the server."
+    );
+  }
   const pool = new pg.Pool({
     connectionString: config.url,
     max: 5,
