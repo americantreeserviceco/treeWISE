@@ -36,6 +36,17 @@ test("status events merge without overwriting original inquiry", () => {
   assert.equal(items[0].latestNote, "called");
   assert.equal(records[0].status, "pending");
 });
+test("damaged queue lines are skipped without hiding valid records", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "treewise-staff-bad-"));
+  await chmod(dir, 0o700);
+  const file = join(dir, "queue.jsonl");
+  const good = JSON.stringify({ id, name: "Example", status: "pending", createdAt: "2026-11-20T10:00:00Z" });
+  await writeFile(file, [good, "{not json", "null", "[1,2]", JSON.stringify({ name: "no id" }), ""].join("\n"), { mode: 0o600 });
+  const records = await listStaffInquiries(file);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].id, id);
+});
+
 test("staff queue reads and records status updates", async () => {
   const dir = await mkdtemp(join(tmpdir(), "treewise-staff-"));
   await chmod(dir, 0o700);
