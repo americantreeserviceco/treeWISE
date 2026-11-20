@@ -1,0 +1,10 @@
+
+--- Golden winter windows (rule: >40 F and no snow in forecast) ---
+[This Afternoon] 60°F | Sunny | OPEN
+[Tonight] 32°F | Partly Cloudy then Slight Chance Snow Showers | hold
+[Saturday] 45°F | Chance Rain And Snow Showers | hold
+[Saturday Night] 24°F | Mostly Clear | hold
+[Sunday] 45°F | Mostly Sunny | OPEN
+[Sunday Night] 27°F | Partly Cloudy | hold
+
+Recorded 0 new forecast period(s) in weather_triggers.
