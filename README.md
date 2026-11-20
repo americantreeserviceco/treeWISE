@@ -153,6 +153,34 @@ The directory must already have private permissions (0700), and the queue file i
 
 `npm test` runs the built-in Node.js regression suite. For an end-to-end smoke test, start the local server with intake enabled, then submit a synthetic inquiry to `/api/inquiries` and verify its UUID and private queue record. Do not mistake a local-save receipt for delivery to the office.
 
+## Sprint 4: Private staff review prototype
+
+A local staff dashboard is available at `http://127.0.0.1:3000/staff.html` when the application is running. The page itself contains no customer records; its API requires an access token. This is an **operator prototype**, not a production-ready staff identity system.
+
+Set a long random access token and the intake environment settings before starting:
+
+```sh
+install -d -m 700 "$HOME/.local/share/treewise-inquiries"
+export ENABLE_INQUIRY_INTAKE=true
+export ENABLE_STAFF_REVIEW=true
+export INQUIRY_QUEUE_FILE="$HOME/.local/share/treewise-inquiries/requests.jsonl"
+export STAFF_REVIEW_TOKEN="$(openssl rand -hex 32)"
+printf 'Temporary staff token: %s\n' "$STAFF_REVIEW_TOKEN"
+npm start
+```
+
+The token above is printed solely for interactive local testing; **do not put it in logs, paste it into tickets, commit it, or use the sample workflow on a public host**. Use a protected secrets store and per-user authentication before production rollout. The access token is entered into the dashboard manually and held only in tab memory.
+
+Staff endpoints:
+- `GET /api/staff/inquiries` lists local queue records and their latest workflow state.
+- `PATCH /api/staff/inquiries/:id` accepts JSON `{"status":"reviewing","note":"Review started"}`. Allowed states: `pending`, `reviewing`, `contacted`, `resolved`, `closed`.
+- Every staff request must send `Authorization: Bearer <token>`. Failed authentication returns 401; the server does not return customer records.
+- Updates append to `requests.jsonl.events` and preserve the originally submitted record.
+
+**Known limitations:** Single shared token (no individual accountability), no login session management, no secure remote access, no multi-process locking, no retention/deletion workflow, no queue pagination, no electronic office delivery, and no production audit controls. The queue and event files contain personal information and must not be copied into public builds or backups accessible to unauthorized users. Run only on localhost with synthetic data.
+
+Run `npm test`; the GitHub Actions workflow also runs syntax checks and Node tests on pull requests.
+
 ## Privacy and safety
 
 - Chat prompts and attached images are sent by the app's server to Ollama at `127.0.0.1`; the app does not call a hosted AI API.
@@ -192,6 +220,9 @@ This server binds to localhost and has no authentication or production deploymen
 ├── server.mjs       # Express server and Ollama API integration
 ├── knowledge.mjs    # Local curated retrieval library
 ├── inquiries.mjs    # Validated, disabled-by-default local inquiry queue
+├── staff.mjs        # Staff authentication and status events
+├── public/staff.html # Local staff review UI
+├── test/staff.test.mjs
 ├── test/inquiries.test.mjs
 ├── test/knowledge.test.mjs
 ├── package.json
