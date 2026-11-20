@@ -7,7 +7,8 @@ test("every article has a unique id and source metadata", () => {
   for (const article of articles) {
     assert.ok(article.id && article.title && article.guidance);
     assert.ok(article.source.startsWith("https://"));
-    assert.match(article.reviewed, /^\d{4}-\d{2}-\d{2}$/);
+    // No entry is marked reviewed until a qualified reviewer records a date.
+    assert.equal(article.reviewed, null);
   }
 });
 

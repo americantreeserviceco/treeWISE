@@ -47,7 +47,23 @@ export async function readQueue(file) {
   try { raw = await readFile(file, "utf8"); }
   catch (error) { if (error.code === "ENOENT") return []; throw error; }
   if (Buffer.byteLength(raw) > 5_000_000) throw new Error("Queue exceeds supported size.");
-  return raw.trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
+  // One damaged line must not take the whole review queue offline. Skip lines
+  // that are not JSON objects with a string id and createdAt, and say so.
+  const records = [];
+  let skipped = 0;
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    let entry;
+    try { entry = JSON.parse(line); } catch { skipped += 1; continue; }
+    if (entry && typeof entry === "object" && !Array.isArray(entry) &&
+        typeof entry.id === "string" && typeof entry.createdAt === "string") {
+      records.push(entry);
+    } else {
+      skipped += 1;
+    }
+  }
+  if (skipped > 0) console.warn(`Skipped ${skipped} malformed line(s) in ${file}.`);
+  return records;
 }
 
 export function mergeStatus(records, events) {
