@@ -29,6 +29,10 @@ export async function createStaff(pool, { username, displayName, password }) {
   );
   return result.rows[0];
 }
+export async function purgeExpiredSessions(pool) {
+  await pool.query("DELETE FROM treewise_sessions WHERE expires_at <= NOW()");
+}
+
 export async function loginStaff(pool, { username, password }) {
   const result = await pool.query(
     "SELECT id, username, display_name, password_hash FROM treewise_staff WHERE username = $1 AND is_active = true",
@@ -39,6 +43,8 @@ export async function loginStaff(pool, { username, password }) {
   const fallback = "scrypt:v1:00000000000000000000000000000000:" + "0".repeat(128);
   const matches = await verifyPassword(password, staff?.password_hash || fallback);
   if (!staff || !matches) return null;
+  // Expired sessions are never accepted, but they must not pile up either.
+  await purgeExpiredSessions(pool);
   const session = newSession();
   await pool.query(
     "INSERT INTO treewise_sessions(token_hash,staff_id,expires_at) VALUES ($1,$2,$3)",

@@ -13,6 +13,8 @@ const staff = staffConfig();
 const dbConfig = postgresConfig();
 const database = dbConfig.enabled ? await openDatabase(dbConfig) : null;
 const allowLogin = makeRateLimiter({ limit: 5, windowMs: 5 * 60_000 });
+// Per-account limit: stops password guessing spread across many IP addresses.
+const allowLoginAccount = makeRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
 const allowInquiry = makeRateLimiter();
 
 const PORT = Number(process.env.PORT || 3000);
@@ -105,6 +107,7 @@ app.post("/api/staff/login", async (req, res) => {
   if (!allowLogin(req.ip || "local")) return res.status(429).json({ error: "Too many login attempts." });
   const credentials = validateCredentials(req.body);
   if (!credentials) return res.status(400).json({ error: "Invalid credentials." });
+  if (!allowLoginAccount(credentials.username)) return res.status(429).json({ error: "Too many login attempts." });
   try {
     const session = await loginStaff(database, credentials);
     if (!session) return res.status(401).json({ error: "Invalid credentials." });

@@ -50,10 +50,28 @@ test("successful login uses a parameterized user lookup and persists only a toke
   }};
   const result = await loginStaff(pool, { username: "arborist", password });
   assert.equal(result.staff.displayName, "Staff User");
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.match(calls[0].sql, /username = \$1/);
-  assert.equal(calls[1].args[0], sessionHash(result.token));
-  assert.notEqual(calls[1].args[0], result.token);
+  assert.match(calls[1].sql, /^DELETE FROM treewise_sessions WHERE expires_at <= NOW\(\)$/);
+  assert.equal(calls[2].args[0], sessionHash(result.token));
+  assert.notEqual(calls[2].args[0], result.token);
+});
+
+test("login removes expired sessions before issuing a new one", async () => {
+  const password = "long-test-password-for-staff";
+  const stored = await hashPassword(password);
+  const sqlSeen = [];
+  const pool = { async query(sql) {
+    sqlSeen.push(sql);
+    if (sql.startsWith("SELECT id, username")) {
+      return { rows: [{ id: "staff-id", username: "arborist", display_name: "Staff User", password_hash: stored }] };
+    }
+    return { rows: [] };
+  }};
+  await loginStaff(pool, { username: "arborist", password });
+  const purgeAt = sqlSeen.findIndex(sql => sql.startsWith("DELETE FROM treewise_sessions"));
+  const insertAt = sqlSeen.findIndex(sql => sql.startsWith("INSERT INTO treewise_sessions"));
+  assert.ok(purgeAt > 0 && purgeAt < insertAt, "expired sessions purged before insert");
 });
 
 test("session lookup rejects unknown or expired sessions in SQL", async () => {
