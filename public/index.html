@@ -1,0 +1,181 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport"
+        content="width=device-width,initial-scale=1">
+  <title>Ask Troy | American Tree Colorado</title>
+  <style>
+    body {
+      font: 16px system-ui, sans-serif;
+      background: #f4f7f1;
+      margin: 0;
+      color: #183b2d;
+    }
+    main {
+      max-width: 660px;
+      margin: 30px auto;
+      background: white;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px #183b2d19;
+    }
+    header {
+      background: #173c2d;
+      color: white;
+      padding: 24px;
+    }
+    header h1 { margin: 0; }
+    #messages {
+      height: 420px;
+      overflow-y: auto;
+      padding: 18px;
+    }
+    .message {
+      white-space: pre-wrap;
+      background: #eef4ee;
+      margin: 10px 0;
+      padding: 14px;
+      border-radius: 12px;
+    }
+    .user {
+      background: #e5e9f2;
+      margin-left: 15%;
+    }
+    .controls { padding: 18px; }
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      font: inherit;
+    }
+    button {
+      background: #206741;
+      color: white;
+      border: none;
+      border-radius: 9px;
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; }
+    small { color: #52665b; }
+    a { color: #206741; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🌳 Ask Troy</h1>
+    American Tree Colorado
+    <div><small style="color:#e0ebe3">
+      AI tree-care assistant • Not a human arborist
+    </small></div>
+  </header>
+
+  <div id="messages" aria-live="polite">
+    <div class="message">
+      Hi! I'm Ask Troy. What's going on with your tree?
+    </div>
+  </div>
+
+  <div class="controls">
+    <form id="chat">
+      <textarea id="question" rows="3" maxlength="2000"
+        placeholder="Describe your tree problem..."
+        required></textarea>
+      <p>
+        <label>
+          Optional tree photo
+          <input id="photo" type="file"
+            accept="image/jpeg,image/png,image/webp">
+        </label>
+      </p>
+      <button id="send">Ask Troy</button>
+    </form>
+    <p><small>
+      Photos are processed to answer your question.
+      This chat does not submit a service request.
+    </small></p>
+    <p>
+      Need an arborist? Call 303-456-6898 or
+      <a href="https://americantreecolorado.com/contact">
+        contact American Tree Colorado
+      </a>.
+    </p>
+  </div>
+</main>
+
+<script>
+const history = [];
+const form = document.querySelector("#chat");
+const messages = document.querySelector("#messages");
+const send = document.querySelector("#send");
+
+function addMessage(role, text) {
+  const item = document.createElement("div");
+  item.className = "message " +
+    (role === "user" ? "user" : "assistant");
+  item.textContent = text;
+  messages.append(item);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function readPhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
+    if (file.size > 5_000_000) {
+      return reject(new Error("Maximum image size is 5 MB."));
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Image read failed."));
+    reader.readAsDataURL(file);
+  });
+}
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  const question = document.querySelector("#question");
+  const photo = document.querySelector("#photo");
+  const message = question.value.trim();
+  if (!message) return;
+
+  send.disabled = true;
+  addMessage("user", message);
+
+  try {
+    const image = await readPhoto(photo.files[0]);
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        image,
+        history
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Request failed.");
+    }
+
+    addMessage("assistant", data.answer);
+    history.push(
+      { role: "user", content: message },
+      { role: "assistant", content: data.answer }
+    );
+
+    if (history.length > 12) history.splice(0, 2);
+    question.value = "";
+    photo.value = "";
+  } catch (error) {
+    addMessage("assistant", error.message);
+  } finally {
+    send.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
