@@ -79,6 +79,7 @@ const safetyNote =
   "in immediate danger, contact emergency services.";
 
 async function requireStaff(req, res, next) {
+  res.set("Cache-Control", "no-store");
   if (database) {
     try {
       const token = bearerToken(req.get("authorization"));
@@ -138,7 +139,7 @@ app.patch("/api/staff/inquiries/:id", requireStaff, async (req, res) => {
   const change = validateStatusChange(req.params.id, req.body);
   if (!change.ok) return res.status(400).json({ error: change.error });
   try {
-    const items = await listStaffInquiries(staff.file);
+    const items = database ? await getInquiries(database) : await listStaffInquiries(staff.file);
     if (!items.some(item => item.id === change.value.id)) {
       return res.status(404).json({ error: "Inquiry not found." });
     }
