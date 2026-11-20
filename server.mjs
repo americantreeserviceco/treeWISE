@@ -3,11 +3,18 @@ import "dotenv/config";
 import express from "express";
 import { intakeConfig, validateInquiry, saveInquiry, makeRateLimiter } from "./inquiries.mjs";
 import { staffConfig, authorizeStaff, validateStatusChange, listStaffInquiries, appendStatus } from "./staff.mjs";
+import { validateCredentials, bearerToken } from "./auth.mjs";
+import { postgresConfig, openDatabase, loginStaff, findSession, revokeSession, addInquiry, getInquiries, setInquiryStatus } from "./postgres.mjs";
 import { buildKnowledgeContext } from "./knowledge.mjs";
 
 const app = express();
 const intake = intakeConfig();
 const staff = staffConfig();
+const dbConfig = postgresConfig();
+const database = dbConfig.enabled ? await openDatabase(dbConfig) : null;
+const allowLogin = makeRateLimiter({ limit: 5, windowMs: 5 * 60_000 });
+// Per-account limit: stops password guessing spread across many IP addresses.
+const allowLoginAccount = makeRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
 const allowInquiry = makeRateLimiter();
 
 const PORT = Number(process.env.PORT || 3000);
@@ -73,7 +80,20 @@ const safetyNote =
   "clear and contact the utility. If people are " +
   "in immediate danger, contact emergency services.";
 
-function requireStaff(req, res, next) {
+async function requireStaff(req, res, next) {
+  res.set("Cache-Control", "no-store");
+  if (database) {
+    try {
+      const token = bearerToken(req.get("authorization"));
+      const user = token ? await findSession(database, token) : null;
+      if (!user) return res.status(401).json({ error: "Staff authorization required." });
+      req.staffUser = user;
+      return next();
+    } catch(error) {
+      console.error("Session lookup failed:", error.message);
+      return res.status(503).json({ error: "Staff session unavailable." });
+    }
+  }
   res.set("Cache-Control", "no-store");
   if (!authorizeStaff(req.get("authorization"), staff)) {
     return res.status(401).json({ error: "Staff authorization required." });
@@ -81,9 +101,36 @@ function requireStaff(req, res, next) {
   next();
 }
 
+app.post("/api/staff/login", async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (!database) return res.status(503).json({ error: "Individual staff login is not enabled." });
+  if (!allowLogin(req.ip || "local")) return res.status(429).json({ error: "Too many login attempts." });
+  const credentials = validateCredentials(req.body);
+  if (!credentials) return res.status(400).json({ error: "Invalid credentials." });
+  if (!allowLoginAccount(credentials.username)) return res.status(429).json({ error: "Too many login attempts." });
+  try {
+    const session = await loginStaff(database, credentials);
+    if (!session) return res.status(401).json({ error: "Invalid credentials." });
+    return res.json(session);
+  } catch(error) {
+    console.error("Staff login unavailable:", error.message);
+    return res.status(503).json({ error: "Staff login unavailable." });
+  }
+});
+app.post("/api/staff/logout", requireStaff, async (req, res) => {
+  if (!database) return res.status(400).json({ error: "Database session not enabled." });
+  try {
+    await revokeSession(database, bearerToken(req.get("authorization")));
+    return res.json({ loggedOut: true });
+  } catch(error) {
+    console.error("Logout failed:", error.message);
+    return res.status(503).json({ error: "Unable to log out." });
+  }
+});
+
 app.get("/api/staff/inquiries", requireStaff, async (_req, res) => {
   try {
-    const items = await listStaffInquiries(staff.file);
+    const items = database ? await getInquiries(database) : await listStaffInquiries(staff.file);
     res.json({ items, count: items.length });
   } catch (error) {
     console.error("Unable to list staff inquiries:", error.message);
@@ -95,6 +142,11 @@ app.patch("/api/staff/inquiries/:id", requireStaff, async (req, res) => {
   const change = validateStatusChange(req.params.id, req.body);
   if (!change.ok) return res.status(400).json({ error: change.error });
   try {
+    if (database) {
+      const updated = await setInquiryStatus(database, { ...change.value, staffId: req.staffUser.staff_id });
+      if (!updated) return res.status(404).json({ error: "Inquiry not found." });
+      return res.json({ updated: true, reference: change.value.id, status: change.value.status });
+    }
     const items = await listStaffInquiries(staff.file);
     if (!items.some(item => item.id === change.value.id)) {
       return res.status(404).json({ error: "Inquiry not found." });
@@ -109,7 +161,7 @@ app.patch("/api/staff/inquiries/:id", requireStaff, async (req, res) => {
 
 app.get("/api/inquiry/config", (req, res) => {
   res.set("Cache-Control", "no-store");
-  res.json({ enabled: intake.enabled, photosSupported: false, delivery: "local-queue" });
+  res.json({ enabled: intake.enabled, photosSupported: false, delivery: database ? "private-database" : "local-queue" });
 });
 
 app.post("/api/inquiries", async (req, res) => {
@@ -134,14 +186,14 @@ app.post("/api/inquiries", async (req, res) => {
   if (parsed.spam) return res.status(202).json({ accepted: false, message: "Request received for processing." });
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
   try {
-    const saved = await saveInquiry(parsed.value, intake);
+    const saved = database ? await addInquiry(database, parsed.value) : await saveInquiry(parsed.value, intake);
     return res.status(201).json({
       accepted: true,
       reference: saved.id,
       createdAt: saved.createdAt,
-      status: "saved-locally",
+      status: database ? "saved-to-database" : "saved-locally",
       deliveredToOffice: false,
-      message: "Inquiry saved to a local queue for staff review. The office has not been notified automatically."
+      message: database ? "Inquiry saved to the private database for staff review. The office has not been notified automatically." : "Inquiry saved to a local queue for staff review. The office has not been notified automatically."
     });
   } catch (error) {
     console.error("Inquiry storage failed:", error.message);

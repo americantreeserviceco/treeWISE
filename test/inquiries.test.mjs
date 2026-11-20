@@ -37,6 +37,11 @@ test("accepts valid phone-only submission", () => {
   assert.equal(validateInquiry({ ...valid(), email: "", phone: "303-555-0199" }).ok, true);
 });
 
+test("PostgreSQL intake does not require a JSONL path", () => {
+  assert.deepEqual(intakeConfig({ ENABLE_INQUIRY_INTAKE: "true", TREEWISE_STORAGE: "postgres" }),
+    { enabled: true, file: "" });
+});
+
 test("queue is opt-in and needs absolute location", () => {
   assert.deepEqual(intakeConfig({}), { enabled: false, file: "" });
   assert.throws(() => intakeConfig({ ENABLE_INQUIRY_INTAKE: "true", INQUIRY_QUEUE_FILE: "./leads.jsonl" }), /absolute/);

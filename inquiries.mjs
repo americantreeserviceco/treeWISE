@@ -42,7 +42,7 @@ export function validateInquiry(body) {
 export function intakeConfig(env = process.env) {
   const enabled = env.ENABLE_INQUIRY_INTAKE === "true";
   const file = text(env.INQUIRY_QUEUE_FILE);
-  if (enabled && (!file || !isAbsolute(file))) {
+  if (enabled && env.TREEWISE_STORAGE !== "postgres" && (!file || !isAbsolute(file))) {
     throw new Error("INQUIRY_QUEUE_FILE must be an absolute private path when intake is enabled.");
   }
   return { enabled, file };

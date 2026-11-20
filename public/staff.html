@@ -26,6 +26,12 @@
 <section>
   <h2>Staff access</h2>
   <p><small>Requires local staff review configuration. The token stays in this browser tab's memory and is not stored in localStorage or cookies. Do not use on a publicly accessible deployment.</small></p>
+  <form id="login">
+    <label>Username <input id="username" name="username" autocomplete="username" required></label>
+    <label>Password <input id="password" type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit">Sign in (PostgreSQL mode)</button>
+  </form>
+  <p><small>For development-only shared-token mode, enter the token below instead.</small></p>
   <label>Staff access token <input id="token" type="password" autocomplete="off" spellcheck="false"></label>
   <div class="row"><button id="load">Load inquiries</button><button id="clear" type="button">Clear token</button></div>
   <p id="status" role="status" aria-live="polite"></p>
@@ -95,8 +101,31 @@ function renderInquiry(item) {
   card.append(title, reference, details, note, controls);
   return card;
 }
+document.querySelector("#login").addEventListener("submit", async event => {
+  event.preventDefault();
+  status.textContent = "Signing in…";
+  token = "";
+  items.replaceChildren();
+  const username = document.querySelector("#username").value.trim();
+  const passwordInput = document.querySelector("#password");
+  const password = passwordInput.value;
+  passwordInput.value = "";
+  try {
+    const response = await fetch("/api/staff/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ username, password })
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Unable to sign in.");
+    token = body.token;
+    status.textContent = `Signed in as ${body.staff.displayName}. Select Load inquiries to review requests.`;
+  } catch(error) { status.textContent = error.message; }
+});
+
 document.querySelector("#load").addEventListener("click", async () => {
-  token = input.value;
+  if (input.value) token = input.value;
   input.value = "";
   items.replaceChildren();
   status.textContent = "Loading…";
@@ -107,11 +136,20 @@ document.querySelector("#load").addEventListener("click", async () => {
     for (const item of response.items) items.append(renderInquiry(item));
   } catch(error) { status.textContent = error.message; token = ""; }
 });
-document.querySelector("#clear").addEventListener("click", () => {
+document.querySelector("#clear").addEventListener("click", async () => {
+  const oldToken = token;
   token = "";
+  if (oldToken) {
+    try {
+      await fetch("/api/staff/logout", {
+        method: "POST", headers: { Authorization: `Bearer ${oldToken}` },
+        cache: "no-store"
+      });
+    } catch { /* local session expires server-side if network is unavailable */ }
+  }
   input.value = "";
   items.replaceChildren();
-  status.textContent = "Access token cleared from this tab.";
+  status.textContent = "Access token cleared from this tab. Database session revoked if available.";
 });
 </script>
 </body>
