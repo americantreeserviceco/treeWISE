@@ -1,5 +1,6 @@
 // Curated, version-controlled guidance. Not a diagnosis or a substitute for an arborist.
-// Content is advisory; source pages should be reviewed periodically for updates.
+// Content is advisory. "reviewed" stays null until an arborist or editor has
+// reviewed the entry and the date is recorded.
 export const articles = [
   {
     id: "watering",
@@ -7,7 +8,7 @@ export const articles = [
     keywords: ["water", "watering", "drought", "dry", "brown leaves", "newly planted", "winter watering", "irrigation"],
     guidance: "Watering depends on species, tree age, weather, soil drainage, and recent precipitation. Check soil moisture in the root zone before adding water. Newly planted trees require closer monitoring while roots establish. Avoid keeping roots continuously saturated. In dry Colorado winters, ask whether the ground is unfrozen and conditions are appropriate before recommending winter watering.",
     source: "https://extension.colostate.edu/",
-    reviewed: "2026-11-20"
+    reviewed: null
   },
   {
     id: "leaf-symptoms",
@@ -15,7 +16,7 @@ export const articles = [
     keywords: ["brown", "yellow", "wilting", "leaves", "leaf", "scorch", "chlorosis", "spots", "needles"],
     guidance: "Leaf discoloration can be associated with inconsistent watering, heat, salt exposure, root damage, pests, diseases, or natural seasonal change. Ask for species, affected branches, when symptoms started, and nearby construction or soil disturbance. A photo can show symptoms but does not establish the underlying cause.",
     source: "https://extension.colostate.edu/",
-    reviewed: "2026-11-20"
+    reviewed: null
   },
   {
     id: "pruning",
@@ -23,7 +24,7 @@ export const articles = [
     keywords: ["prune", "pruning", "trim", "trimming", "deadwood", "branch", "limb", "canopy"],
     guidance: "Pruning decisions depend on tree species, season, branch condition, and goals. Avoid unnecessary topping and indiscriminate removal of healthy canopy. Large limbs, high work, compromised trees, and work near utilities should be assessed by qualified professionals; do not provide risky DIY cutting instructions.",
     source: "https://www.treesaregood.org/",
-    reviewed: "2026-11-20"
+    reviewed: null
   },
   {
     id: "pests",
@@ -31,7 +32,7 @@ export const articles = [
     keywords: ["bug", "beetle", "borer", "insect", "pest", "fungus", "disease", "holes", "sap", "bark"],
     guidance: "Pests and diseases vary by host species and season. Ask for species, location of symptoms, timing, and clear photographs of both affected and unaffected areas. Do not identify a pathogen with certainty or recommend pesticides, injections, or treatment solely from a photo. Suggest local extension diagnostics or an in-person arborist when warranted.",
     source: "https://extension.colostate.edu/",
-    reviewed: "2026-11-20"
+    reviewed: null
   },
   {
     id: "roots",
@@ -39,7 +40,7 @@ export const articles = [
     keywords: ["root", "roots", "soil", "compaction", "construction", "excavation", "mulch", "grade", "trunk"],
     guidance: "Soil compaction, trenching, grade changes, excess mulch against the trunk, and altered drainage can stress trees. Ask about recent landscape or construction work and the extent of soil disturbance. Avoid declaring a tree stable or unstable from remote observations. Visible root-plate movement or sudden leaning requires keeping people clear and seeking qualified on-site assessment.",
     source: "https://www.treesaregood.org/",
-    reviewed: "2026-11-20"
+    reviewed: null
   },
   {
     id: "planting",
@@ -47,7 +48,7 @@ export const articles = [
     keywords: ["plant", "planting", "species", "select", "choose", "new tree", "transplant", "site"],
     guidance: "Tree selection should consider local climate, available rooting space, sun, soil, water, mature size, and utility clearance. Recommend site-specific guidance and diverse, climate-appropriate species rather than promising any species will thrive. Avoid making utility-clearance or municipal-permit claims without local verification.",
     source: "https://extension.colostate.edu/",
-    reviewed: "2026-11-20"
+    reviewed: null
   }
 ];
 
