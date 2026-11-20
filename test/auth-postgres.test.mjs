@@ -32,6 +32,15 @@ test("session token has 256 bits entropy and hashes before persistence", () => {
   assert.equal(sessionHash("invalid"), null);
 });
 
+test("missing pg driver gives a clear startup error", async () => {
+  const { openDatabase } = await import("../postgres.mjs");
+  await assert.rejects(
+    openDatabase({ enabled: true, url: "postgres://example.invalid/db" },
+      () => Promise.reject(new Error("Cannot find package 'pg'"))),
+    /needs the pg package/
+  );
+});
+
 test("PostgreSQL mode requires explicit URL", () => {
   assert.equal(postgresConfig({}).enabled, false);
   assert.throws(() => postgresConfig({ TREEWISE_STORAGE: "postgres" }), /DATABASE_URL/);
