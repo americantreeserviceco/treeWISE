@@ -182,14 +182,14 @@ app.post("/api/inquiries", async (req, res) => {
   if (parsed.spam) return res.status(202).json({ accepted: false, message: "Request received for processing." });
   if (!parsed.ok) return res.status(400).json({ error: parsed.error });
   try {
-    const saved = await saveInquiry(parsed.value, intake);
+    const saved = database ? await addInquiry(database, parsed.value) : await saveInquiry(parsed.value, intake);
     return res.status(201).json({
       accepted: true,
       reference: saved.id,
       createdAt: saved.createdAt,
       status: database ? "saved-to-database" : "saved-locally",
       deliveredToOffice: false,
-      message: "Inquiry saved to a local queue for staff review. The office has not been notified automatically."
+      message: database ? "Inquiry saved to the private database for staff review. The office has not been notified automatically." : "Inquiry saved to a local queue for staff review. The office has not been notified automatically."
     });
   } catch (error) {
     console.error("Inquiry storage failed:", error.message);
