@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>treeWISE Staff Review — Local Only</title>
+<style>
+  body { font: 16px system-ui,sans-serif; margin:0; background:#f3f6f3; color:#17382a; }
+  header { padding:20px; background:#163e2c; color:white; }
+  main { max-width:960px; margin:24px auto; padding:0 18px; }
+  button, input, select, textarea { font:inherit; padding:9px; }
+  button { background:#206741; color:white; border:0; border-radius:7px; cursor:pointer; }
+  button:disabled { opacity:.5; }
+  article { border:1px solid #d9e4db; background:white; padding:20px; margin:14px 0; border-radius:12px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .row > * { max-width:100%; }
+  .details { white-space:pre-wrap; overflow-wrap:anywhere; }
+  small { color:#486253; }
+  label { display:block; margin:10px 0; }
+  #token { width:min(540px,95%); box-sizing:border-box; }
+</style>
+</head>
+<body>
+<header><h1>🌳 treeWISE — Staff Review</h1><p>Local development preview. No automatic customer notifications.</p></header>
+<main>
+<section>
+  <h2>Staff access</h2>
+  <p><small>Requires local staff review configuration. The token stays in this browser tab's memory and is not stored in localStorage or cookies. Do not use on a publicly accessible deployment.</small></p>
+  <label>Staff access token <input id="token" type="password" autocomplete="off" spellcheck="false"></label>
+  <div class="row"><button id="load">Load inquiries</button><button id="clear" type="button">Clear token</button></div>
+  <p id="status" role="status" aria-live="polite"></p>
+</section>
+<section aria-labelledby="queue-title">
+<h2 id="queue-title">Customer inquiries</h2>
+<div id="items"></div>
+</section>
+</main>
+<script>
+let token = "";
+const input = document.querySelector("#token");
+const status = document.querySelector("#status");
+const items = document.querySelector("#items");
+const statuses = ["pending", "reviewing", "contacted", "resolved", "closed"];
+function el(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = String(text);
+  if (className) node.className = className;
+  return node;
+}
+async function api(url, options = {}) {
+  const result = await fetch(url, {
+    ...options,
+    headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) },
+    cache: "no-store"
+  });
+  const body = await result.json();
+  if (!result.ok) throw new Error(body.error || "Request failed.");
+  return body;
+}
+function renderInquiry(item) {
+  const card = el("article");
+  const title = el("h3", item.name || "Inquiry");
+  const reference = el("small", `Reference: ${item.id} | Created: ${item.createdAt || "Unknown"}`);
+  const details = el("p", `Priority: ${item.urgency || "routine"}\nStatus: ${item.status || "pending"}\nEmail: ${item.email || "—"}\nPhone: ${item.phone || "—"}\nLocation: ${item.location || "—"}\nConcern: ${item.description || "—"}`, "details");
+  const select = el("select");
+  for (const state of statuses) {
+    const opt = el("option", state);
+    opt.value = state;
+    select.append(opt);
+  }
+  select.value = statuses.includes(item.status) ? item.status : "pending";
+  const note = el("textarea");
+  note.placeholder = "Optional staff note (up to 500 characters)";
+  note.maxLength = 500;
+  note.rows = 2;
+  note.setAttribute("aria-label", "Staff update note");
+  const save = el("button", "Save status");
+  const feedback = el("small");
+  save.addEventListener("click", async () => {
+    save.disabled = true;
+    feedback.textContent = "Saving…";
+    try {
+      const response = await api(`/api/staff/inquiries/${encodeURIComponent(item.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: select.value, note: note.value })
+      });
+      feedback.textContent = `Saved: ${response.status}`;
+      note.value = "";
+    } catch(error) { feedback.textContent = error.message; }
+    finally { save.disabled = false; }
+  });
+  const controls = el("div", undefined, "row");
+  controls.append(select, save, feedback);
+  card.append(title, reference, details, note, controls);
+  return card;
+}
+document.querySelector("#load").addEventListener("click", async () => {
+  token = input.value;
+  input.value = "";
+  items.replaceChildren();
+  status.textContent = "Loading…";
+  try {
+    const response = await api("/api/staff/inquiries");
+    status.textContent = `${response.count} inquiries loaded.`;
+    if (!response.items.length) items.append(el("p", "No inquiries in the local queue."));
+    for (const item of response.items) items.append(renderInquiry(item));
+  } catch(error) { status.textContent = error.message; token = ""; }
+});
+document.querySelector("#clear").addEventListener("click", () => {
+  token = "";
+  input.value = "";
+  items.replaceChildren();
+  status.textContent = "Access token cleared from this tab.";
+});
+</script>
+</body>
+</html>
