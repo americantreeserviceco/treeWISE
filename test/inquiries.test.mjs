@@ -52,6 +52,7 @@ test("writes one private JSONL record and returns reference", async () => {
   assert.equal(records.length, 1);
   assert.equal(records[0].id, saved.id);
   assert.equal(records[0].status, "pending");
+  assert.deepEqual(records[0].consent, { given: true, at: records[0].createdAt, notice: "local-queue-v1" });
 });
 
 test("rejects queue file symlink", async () => {
