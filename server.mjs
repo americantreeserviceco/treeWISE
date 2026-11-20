@@ -139,14 +139,14 @@ app.patch("/api/staff/inquiries/:id", requireStaff, async (req, res) => {
   const change = validateStatusChange(req.params.id, req.body);
   if (!change.ok) return res.status(400).json({ error: change.error });
   try {
-    const items = database ? await getInquiries(database) : await listStaffInquiries(staff.file);
-    if (!items.some(item => item.id === change.value.id)) {
-      return res.status(404).json({ error: "Inquiry not found." });
-    }
     if (database) {
       const updated = await setInquiryStatus(database, { ...change.value, staffId: req.staffUser.staff_id });
       if (!updated) return res.status(404).json({ error: "Inquiry not found." });
       return res.json({ updated: true, reference: change.value.id, status: change.value.status });
+    }
+    const items = await listStaffInquiries(staff.file);
+    if (!items.some(item => item.id === change.value.id)) {
+      return res.status(404).json({ error: "Inquiry not found." });
     }
     const event = await appendStatus(staff.file, change.value);
     res.json({ updated: true, reference: event.id, status: event.status, updatedAt: event.createdAt });
