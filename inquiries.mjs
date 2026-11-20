@@ -8,6 +8,8 @@ const PHONE = /^[+()\d\s.-]{7,24}$/;
 const text = (value) => typeof value === "string" ? value.trim() : "";
 const controlChars = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const allowedUrgency = new Set(["routine", "soon", "urgent"]);
+// Version of the on-screen consent wording the customer agreed to.
+const CONSENT_NOTICE = "local-queue-v1";
 
 export function validateInquiry(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -64,7 +66,14 @@ export async function saveInquiry(record, config) {
     }
     const id = randomUUID();
     const createdAt = new Date().toISOString();
-    await handle.writeFile(JSON.stringify({ id, createdAt, status: "pending", ...record }) + "\n");
+    // Record the consent with the request itself, so the queue shows that the
+    // customer agreed to local storage and when. Placed last so a caller
+    // cannot override it.
+    const entry = {
+      id, createdAt, status: "pending", ...record,
+      consent: { given: true, at: createdAt, notice: CONSENT_NOTICE }
+    };
+    await handle.writeFile(JSON.stringify(entry) + "\n");
     await handle.sync();
     return { id, createdAt };
   } finally {
