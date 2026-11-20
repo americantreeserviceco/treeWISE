@@ -2,10 +2,12 @@
 import "dotenv/config";
 import express from "express";
 import { intakeConfig, validateInquiry, saveInquiry, makeRateLimiter } from "./inquiries.mjs";
+import { staffConfig, authorizeStaff, validateStatusChange, listStaffInquiries, appendStatus } from "./staff.mjs";
 import { buildKnowledgeContext } from "./knowledge.mjs";
 
 const app = express();
 const intake = intakeConfig();
+const staff = staffConfig();
 const allowInquiry = makeRateLimiter();
 
 const PORT = Number(process.env.PORT || 3000);
@@ -70,6 +72,40 @@ const safetyNote =
   "cut or remove it. For electrical hazards, stay " +
   "clear and contact the utility. If people are " +
   "in immediate danger, contact emergency services.";
+
+function requireStaff(req, res, next) {
+  res.set("Cache-Control", "no-store");
+  if (!authorizeStaff(req.get("authorization"), staff)) {
+    return res.status(401).json({ error: "Staff authorization required." });
+  }
+  next();
+}
+
+app.get("/api/staff/inquiries", requireStaff, async (_req, res) => {
+  try {
+    const items = await listStaffInquiries(staff.file);
+    res.json({ items, count: items.length });
+  } catch (error) {
+    console.error("Unable to list staff inquiries:", error.message);
+    res.status(503).json({ error: "Unable to load inquiries." });
+  }
+});
+
+app.patch("/api/staff/inquiries/:id", requireStaff, async (req, res) => {
+  const change = validateStatusChange(req.params.id, req.body);
+  if (!change.ok) return res.status(400).json({ error: change.error });
+  try {
+    const items = await listStaffInquiries(staff.file);
+    if (!items.some(item => item.id === change.value.id)) {
+      return res.status(404).json({ error: "Inquiry not found." });
+    }
+    const event = await appendStatus(staff.file, change.value);
+    res.json({ updated: true, reference: event.id, status: event.status, updatedAt: event.createdAt });
+  } catch (error) {
+    console.error("Unable to update inquiry:", error.message);
+    res.status(503).json({ error: "Unable to update inquiry." });
+  }
+});
 
 app.get("/api/inquiry/config", (req, res) => {
   res.set("Cache-Control", "no-store");
