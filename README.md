@@ -125,6 +125,34 @@ The app keeps a small, editable reference library in `knowledge.mjs`. Queries us
 
 Run `npm test` to check the retrieval module. A future milestone can add embedding-based semantic search, a document ingestion pipeline, and reviewed article-level citations.
 
+## Local inquiry intake (development only)
+
+The inquiry feature is **disabled by default**. It does not email the office, notify staff, book appointments, or upload photos. It is deliberately not a production customer-contact integration.
+
+To enable it for local tests, choose a private location **outside the repository and public web root**:
+
+```sh
+install -d -m 700 "$HOME/.local/share/treewise-inquiries"
+ENABLE_INQUIRY_INTAKE=true \
+INQUIRY_QUEUE_FILE="$HOME/.local/share/treewise-inquiries/requests.jsonl" \
+npm start
+```
+
+The directory must already have private permissions (0700), and the queue file is created with permissions 0600. An existing queue file with broader permissions, or a symlinked queue file, is rejected. The service binds to 127.0.0.1. Do not enable this feature on a publicly reachable server.
+
+### API
+
+- `GET /api/inquiry/config`: returns whether local intake is enabled; reports that photo submission is unsupported.
+- `POST /api/inquiries`: validates name, email or phone, description, priority and explicit consent. When enabled, returns `201` with a UUID reference, `status: "saved-locally"`, and `deliveredToOffice: false`. Disabled intake returns `503`.
+- Each accepted inquiry is saved as one JSON object per line with a pending status. Do not commit, email, or expose this file through the web server.
+- The endpoint includes a small in-memory request limiter and a hidden spam-trap field. Neither is adequate as the sole protection for public deployment.
+
+**Staff review:** No authenticated office dashboard or delivery adapter exists yet. Authorized local operators must review the private queue by an approved secure process. Establish retention, deletion, access controls, encryption/backup policy, and a privacy notice before collecting real customer information. For now, use synthetic test data only.
+
+**Photo handling:** A photo may still be attached to a chat question for local Ollama inference, but the inquiry form never transmits that image or the conversation history.
+
+`npm test` runs the built-in Node.js regression suite. For an end-to-end smoke test, start the local server with intake enabled, then submit a synthetic inquiry to `/api/inquiries` and verify its UUID and private queue record. Do not mistake a local-save receipt for delivery to the office.
+
 ## Privacy and safety
 
 - Chat prompts and attached images are sent by the app's server to Ollama at `127.0.0.1`; the app does not call a hosted AI API.
@@ -163,6 +191,8 @@ This server binds to localhost and has no authentication or production deploymen
 │   └── index.html   # Browser chat interface
 ├── server.mjs       # Express server and Ollama API integration
 ├── knowledge.mjs    # Local curated retrieval library
+├── inquiries.mjs    # Validated, disabled-by-default local inquiry queue
+├── test/inquiries.test.mjs
 ├── test/knowledge.test.mjs
 ├── package.json
 └── README.md
