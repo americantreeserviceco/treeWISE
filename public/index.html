@@ -104,9 +104,89 @@
       </a>.
     </p>
   </div>
+  <section class="controls" aria-labelledby="inquiry-title" style="border-top:1px solid #d6e3d9">
+    <h2 id="inquiry-title">Request a tree-care follow-up</h2>
+    <p id="inquiry-availability">Checking whether local inquiry intake is enabled…</p>
+    <form id="inquiry" hidden>
+      <p><label>Name <input name="name" required minlength="2" maxlength="120" autocomplete="name"></label></p>
+      <p><label>Email <input name="email" type="email" maxlength="254" autocomplete="email"></label></p>
+      <p><label>Phone <input name="phone" type="tel" maxlength="24" autocomplete="tel"></label></p>
+      <p><label>General location (optional) <input name="location" maxlength="250" autocomplete="address-level2"></label></p>
+      <p><label>Priority
+        <select name="urgency">
+          <option value="routine">Routine</option>
+          <option value="soon">Soon</option>
+          <option value="urgent">Urgent — not emergency dispatch</option>
+        </select>
+      </label></p>
+      <p><label>Describe your tree concern
+        <textarea name="description" required minlength="20" maxlength="3000"></textarea>
+      </label></p>
+      <p style="position:absolute;left:-10000px" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></p>
+      <p><label><input type="checkbox" name="consent" required>
+        I agree to store this information in the local inquiry queue for staff review.
+        I understand that no appointment is booked and the office is not automatically notified.
+      </label></p>
+      <button type="submit" id="inquiry-send">Save inquiry locally</button>
+      <p><small>At least one contact method is required. Chat history and photos are not included in this request.</small></p>
+    </form>
+    <p id="inquiry-result" role="status" aria-live="polite"></p>
+    <p><small>For immediate dangers involving a potentially falling tree or electrical hazard,
+      keep people clear and contact emergency services or the utility as appropriate.
+      This form is not monitored for emergencies.</small></p>
+  </section>
 </main>
 
 <script>
+const inquiryForm = document.querySelector("#inquiry");
+const inquiryAvailability = document.querySelector("#inquiry-availability");
+const inquiryResult = document.querySelector("#inquiry-result");
+fetch("/api/inquiry/config", { cache: "no-store" })
+  .then(response => {
+    if (!response.ok) throw new Error("Configuration unavailable");
+    return response.json();
+  })
+  .then(config => {
+    if (config.enabled) {
+      inquiryForm.hidden = false;
+      inquiryAvailability.textContent = "Local intake is enabled. Submitted information stays in a local queue until staff reviews it.";
+    } else {
+      inquiryAvailability.textContent = "Online intake is not available. Please call 303-456-6898 or use the official contact page above.";
+    }
+  })
+  .catch(() => {
+    inquiryAvailability.textContent = "Unable to check intake status. Please use the official contact page above.";
+  });
+
+inquiryForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = document.querySelector("#inquiry-send");
+  const formData = new FormData(inquiryForm);
+  const payload = Object.fromEntries(formData.entries());
+  payload.consent = formData.get("consent") === "on";
+  if (!payload.email.trim() && !payload.phone.trim()) {
+    inquiryResult.textContent = "Enter an email address or phone number.";
+    return;
+  }
+  button.disabled = true;
+  inquiryResult.textContent = "Saving inquiry…";
+  try {
+    const response = await fetch("/api/inquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok || !result.accepted) throw new Error(result.error || "Inquiry was not accepted.");
+    inquiryResult.textContent = `Saved locally. Reference: ${result.reference}. The office has not been notified automatically.`;
+    inquiryForm.reset();
+  } catch (error) {
+    inquiryResult.textContent = error.message || "Unable to save inquiry.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
 const history = [];
 const form = document.querySelector("#chat");
 const messages = document.querySelector("#messages");
