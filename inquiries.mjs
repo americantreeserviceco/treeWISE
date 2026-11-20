@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, open, realpath } from "node:fs/promises";
+import { mkdir, open, realpath, stat } from "node:fs/promises";
+import { constants } from "node:fs";
 import { dirname, resolve, isAbsolute } from "node:path";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -53,7 +54,9 @@ export async function saveInquiry(record, config) {
   // Require private existing directory; do not follow symlinks for the file.
   const actualParent = await realpath(parent);
   if (actualParent !== parent) throw new Error("Queue parent must not be a symlink.");
-  const handle = await open(file, "a", 0o600);
+  const directory = await stat(parent);
+  if ((directory.mode & 0o077) !== 0) throw new Error("Queue directory must be private (0700).");
+  const handle = await open(file, constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
   try {
     const stat = await handle.stat();
     if (!stat.isFile() || (stat.mode & 0o077) !== 0) {
