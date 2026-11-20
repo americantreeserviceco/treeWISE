@@ -11,6 +11,7 @@ The assistant is an AI, not Troy or a certified arborist. It provides general in
 - Keep a short conversation history in the browser while the page is open.
 - Show an Ollama/model health check through the API.
 - Add an extra safety notice for messages that mention certain urgent tree hazards.
+- Retrieve relevant version-controlled tree-care guidance locally and show general reference topics in chat. No network search is performed.
 
 ## Requirements
 
@@ -108,7 +109,7 @@ Fields:
 - `history` (optional): array of `{ "role": "user" | "assistant", "content": "..." }` messages; at most 20 entries are accepted. The server uses up to the last 12 valid entries.
 - `image` (optional): a `data:image/jpeg;base64,...`, `data:image/png;base64,...`, or `data:image/webp;base64,...` data URL. The browser limits image files to 5 MB.
 
-Successful responses include `answer`, `model`, `local`, `submitted`, and `booked`. `submitted` and `booked` are always `false`; this prototype does not contact the company or schedule appointments. Invalid requests return `400`; Ollama or model failures return `503`.
+Successful responses include `answer`, `model`, `local`, `submitted`, `booked`, and `sources` (curated reference topics). `submitted` and `booked` are always `false`; this prototype does not contact the company or schedule appointments. Invalid requests return `400`; Ollama or model failures return `503`.
 
 Example:
 
@@ -117,6 +118,12 @@ curl -X POST http://127.0.0.1:3000/api/chat \
   -H 'Content-Type: application/json' \
   -d '{"message":"How often should I water a newly planted tree?"}'
 ```
+
+## Knowledge retrieval
+
+The app keeps a small, editable reference library in `knowledge.mjs`. Queries use deterministic keyword matching, not embeddings, so they run without a second model and do not call external search services. Relevant notes are inserted into the model prompt and returned as `sources`; those links are general reference sites, not citations to individually verified articles. The library is starter content and needs arborist and editorial review before public release. When no entry matches, the assistant uses its general system instructions without fabricated references.
+
+Run `npm test` to check the retrieval module. A future milestone can add embedding-based semantic search, a document ingestion pipeline, and reviewed article-level citations.
 
 ## Privacy and safety
 
@@ -155,6 +162,8 @@ This server binds to localhost and has no authentication or production deploymen
 ├── public/
 │   └── index.html   # Browser chat interface
 ├── server.mjs       # Express server and Ollama API integration
+├── knowledge.mjs    # Local curated retrieval library
+├── test/knowledge.test.mjs
 ├── package.json
 └── README.md
 ```

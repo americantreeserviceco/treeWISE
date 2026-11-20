@@ -1,6 +1,7 @@
 
 import "dotenv/config";
 import express from "express";
+import { buildKnowledgeContext } from "./knowledge.mjs";
 
 const app = express();
 
@@ -123,6 +124,8 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
+    const { context: knowledgeContext, sources } = buildKnowledgeContext(message);
+
     const previous = history
       .filter(h =>
         h &&
@@ -161,7 +164,7 @@ app.post("/api/chat", async (req, res) => {
           model: MODEL,
           stream: false,
           messages: [
-            { role: "system", content: SYSTEM },
+            { role: "system", content: SYSTEM + (knowledgeContext ? "\n\n" + knowledgeContext : "") },
             ...previous,
             userMessage
           ],
@@ -197,7 +200,8 @@ app.post("/api/chat", async (req, res) => {
       model: MODEL,
       local: true,
       submitted: false,
-      booked: false
+      booked: false,
+      sources
     });
 
   } catch (error) {
