@@ -181,6 +181,31 @@ Staff endpoints:
 
 Run `npm test`; the GitHub Actions workflow also runs syntax checks and Node tests on pull requests.
 
+## Sprint 5: PostgreSQL and individual staff authentication (experimental)
+
+The optional `TREEWISE_STORAGE=postgres` mode stores incoming inquiries in PostgreSQL, authenticates individual staff users with salted scrypt password hashes, and stores only SHA-256 digests of random bearer session tokens. Staff sessions last eight hours by default. Status changes are written to an inquiry audit table with a staff ID within the same database transaction as the status update.
+
+**This branch is not ready to merge or deploy** until the PostgreSQL driver installation, committed lockfile, database migration and live integration tests are complete. The existing JSONL/shared-token development workflow remains the default. PostgreSQL mode is enabled only when explicitly configured.
+
+### Provisioning (isolated development database only)
+
+1. Create a separate PostgreSQL role and database with limited privileges. Never use the PostgreSQL superuser as the app identity.
+2. Apply `db/001_init.sql` using an authorized migration role, e.g. `psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/001_init.sql`.
+3. On an environment with npm registry access, run `npm install pg@8.23.1 --save` and **commit the regenerated `package.json` and `package-lock.json` before merging**. The library is not vendored in this branch; the runtime imports it dynamically only when PostgreSQL mode is enabled.
+4. Set `TREEWISE_STORAGE=postgres`, `DATABASE_URL`, and `ENABLE_INQUIRY_INTAKE=true` in a private environment. Use a separate credential to create staff users.
+5. Create a staff user through `node scripts/create-staff.mjs` with `TREEWISE_STAFF_USERNAME`, `TREEWISE_STAFF_DISPLAY_NAME`, and `TREEWISE_STAFF_PASSWORD` supplied privately. Prefer an interactive secrets manager over shell history, CLI arguments, or storing credentials in a committed file.
+6. Open `/staff.html`, sign in, and test listing, state updates, log out and session expiry with synthetic inquiries. Do not use actual customer details during development.
+
+API additions:
+- `POST /api/staff/login` accepts username and password, returns a bearer token and expiry in PostgreSQL mode.
+- `POST /api/staff/logout` revokes the current server-side session.
+- Existing `GET /api/staff/inquiries` and `PATCH /api/staff/inquiries/:id` use authenticated database sessions when PostgreSQL mode is enabled.
+- Existing `POST /api/inquiries` writes to PostgreSQL instead of the JSONL queue in that mode.
+
+### Production blockers
+
+Before using real customer data: complete live PostgreSQL integration tests, migrations and rollback strategy, role-specific least privilege, network/TLS policy, credential rotation, user provisioning and reset/revocation, session management, abuse controls, authorization by role, retention/deletion and backups, CSRF/origin defense for any future cookie-based auth, and encrypted transport. Neither the existing localhost server nor the current dashboard should be exposed directly to the internet.
+
 ## Privacy and safety
 
 - Chat prompts and attached images are sent by the app's server to Ollama at `127.0.0.1`; the app does not call a hosted AI API.
@@ -220,7 +245,11 @@ This server binds to localhost and has no authentication or production deploymen
 ├── server.mjs       # Express server and Ollama API integration
 ├── knowledge.mjs    # Local curated retrieval library
 ├── inquiries.mjs    # Validated, disabled-by-default local inquiry queue
-├── staff.mjs        # Staff authentication and status events
+├── staff.mjs        # Development shared-token staff workflow
+├── auth.mjs         # Password and session token primitives
+├── postgres.mjs     # Opt-in parameterized PostgreSQL adapter
+├── db/001_init.sql  # Database schema migration
+├── scripts/create-staff.mjs # Development staff bootstrap
 ├── public/staff.html # Local staff review UI
 ├── test/staff.test.mjs
 ├── test/inquiries.test.mjs
