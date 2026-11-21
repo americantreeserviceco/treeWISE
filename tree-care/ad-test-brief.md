@@ -1,6 +1,6 @@
 # First Ad Test: Golden-Base Full-Zone Root Nourishment (Draft, not launched)
 
-**Status:** Draft. Nothing has been launched or spent. No ad platform is connected to this session.
+**Status: PINNED (parked).** Nothing has been launched or spent. Waiting on two things from the owner: (1) an ad account with billing, and (2) a daily budget and test length. Crew lead sign-off on the copy is also needed.
 **Date:** 2026-11-20
 **Source:** [americantreecolorado-next-strategy.md](americantreecolorado-next-strategy.md), Priority 1
 

@@ -6,7 +6,7 @@ Local business-intelligence tool for American Tree Colorado. It pulls public dat
 
 | Source | Script | What you get |
 |---|---|---|
-| Denver city street-tree inventory (data.colorado.gov `wz8h-dap6`) | `tree_care_pipeline.py` | All ~359,000 records in `street_trees`. `is_ash` flags Fraxinus (33,479 trees, `vulnerable_trees`). `is_tree` excludes vacant-site placeholders |
+| Denver-area street-tree inventory (data.colorado.gov `wz8h-dap6`, mostly Denver city) | `tree_care_pipeline.py` | All ~359,000 records in `street_trees`. `is_ash` flags Fraxinus (33,479 trees, `vulnerable_trees`). `is_tree` excludes vacant-site placeholders |
 | Colorado SOS business registry (`4ykn-tg5h`) | `tree_care_pipeline.py` | Tree businesses in Good Standing in the target cities, with address and ZIP |
 | Census ACS 2019–2023 medians and Census ZCTA centroids | `tree_care_pipeline.py` | `zip_profile`: each Colorado ZIP's distance from Golden, median household income and median home value. No API key needed |
 | Jefferson County projects (ArcGIS) | `tree_care_pipeline.py` | Open-space projects. Source currently returns nothing; nothing is made up |
@@ -53,7 +53,7 @@ The forecast job runs daily at 06:30 through cron (see `crontab -l`). It logs to
 - **Replace on refresh.** Each source is replaced in full when it loads. A failed source keeps its previous rows and the run exits with status 1.
 - **No seeded records.** Nothing is inserted when a source is empty or down.
 - **Winter rule (assumption, for the crew lead to confirm).** A forecast period is open when forecast air temperature is above 40°F, the forecast text has no snow, and 30-day precipitation is under 1.00 in. If no station has enough reported days, the period holds. Soil temperature and frost depth are not checked.
-- **Coverage.** The ash inventory covers Denver city only. Other cities show as "not covered", not as zero.
+- **Coverage.** The inventory is mostly Denver city, with some trees west of the city and within 5 miles of Golden. Ash counts for any ZIP mean no ash in the inventory there, not that the ZIP has no trees.
 - **Radius.** The dashboard filters everything by distance from Golden (sidebar slider).
 
 ## Files

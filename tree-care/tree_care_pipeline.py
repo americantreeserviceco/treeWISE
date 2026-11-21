@@ -34,7 +34,7 @@ def _float(value):
 
 
 def etl_trees(conn):
-    """Denver city street-tree inventory, all species.
+    """Denver-area street-tree inventory, all species.
 
     Loads every tree into street_trees and flags ash (botanical genus
     Fraxinus). vulnerable_trees is then rebuilt as the ash subset, so the EAB

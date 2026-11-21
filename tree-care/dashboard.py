@@ -120,9 +120,9 @@ with tab_zip:
   )
 
 with tab_trees:
-  st.subheader(f"Ash trees within {radius} miles (Denver city inventory)")
+  st.subheader(f"Ash trees within {radius} miles (Denver-area street-tree inventory)")
   st.caption(
-      "Inventory dates vary (2014 to 2026). These are public street trees, so"
+      "Inventory dates are mostly 2014 to 2026; three records have invalid dates. These are public street trees, so"
       " they show neighborhoods, not customers."
   )
   if trees_in.empty:
