@@ -49,7 +49,7 @@ These corrections come from fixing the scripts and re-checking the data. v3 had 
 | Competitor counts | 168 (broad name match) | **481** in target cities, using stricter name phrases. Counts are not comparable to v3 |
 | Competitor location | City only; geocoding needed | Address and **ZIP** now stored, so ZIP-level counts need no geocoding |
 | Foothill projects | Five records | **Removed.** Those were hardcoded fallback records. The ArcGIS source returned zero features on the last run |
-| Winter forecast | BOU 78,87 (Boulder) | **BOU 55,63**, verified as the Golden grid |
+| Winter forecast | BOU 78,87 (described as Boulder) | **BOU 55,63**, verified as the Golden grid. Grid 78,87 centers near 40.3 N, 104.6 W, northeast of Longmont, not Boulder |
 
 ---
 
