@@ -6,6 +6,7 @@
   <meta name="viewport"
         content="width=device-width,initial-scale=1">
   <title>Ask Troy | American Tree Colorado</title>
+  <link rel="icon" type="image/webp" href="/assets/avatar-ask-troy.webp">
   <style>
     body {
       font: 16px system-ui, sans-serif;
@@ -24,24 +25,87 @@
     header {
       background: #173c2d;
       color: white;
-      padding: 24px;
+      padding: 20px 24px;
     }
-    header h1 { margin: 0; }
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #32734e;
+      background: #0d2b1f;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header-title-wrap {
+      flex: 1;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.55rem;
+      line-height: 1.2;
+    }
+    .header-brand-name {
+      font-size: 0.95rem;
+      color: #b7d6c2;
+      margin-top: 2px;
+    }
+    .header-disclaimer {
+      margin-top: 3px;
+    }
+    .header-disclaimer small {
+      color: #e0ebe3;
+      font-size: 0.82rem;
+    }
     #messages {
       height: 420px;
       overflow-y: auto;
       padding: 18px;
     }
+    .message-row {
+      display: flex;
+      gap: 10px;
+      margin: 12px 0;
+      align-items: flex-start;
+    }
+    .message-row.user-row {
+      justify-content: flex-end;
+    }
+    .chat-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid #3c825b;
+      background: #173c2d;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .chat-avatar-spacer {
+      width: 36px;
+      flex-shrink: 0;
+    }
     .message {
       white-space: pre-wrap;
       background: #eef4ee;
-      margin: 10px 0;
-      padding: 14px;
+      padding: 12px 14px;
       border-radius: 12px;
+      max-width: 80%;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
     }
     .user {
       background: #e5e9f2;
-      margin-left: 15%;
+    }
+    .sources-card {
+      background: #f7faf6;
+      border: 1px solid #dbe6de;
+      font-size: 0.92rem;
     }
     .controls { padding: 18px; }
     textarea {
@@ -66,16 +130,24 @@
 <body>
 <main>
   <header>
-    <h1>🌳 Ask Troy</h1>
-    American Tree Colorado
-    <div><small style="color:#e0ebe3">
-      AI tree-care assistant • Not a human arborist
-    </small></div>
+    <div class="header-content">
+      <img src="/assets/avatar-ask-troy.webp" alt="Ask Troy avatar" width="56" height="56" class="header-avatar">
+      <div class="header-title-wrap">
+        <h1>Ask Troy</h1>
+        <div class="header-brand-name">American Tree Colorado</div>
+        <div class="header-disclaimer"><small>
+          AI tree-care assistant • Not a human arborist
+        </small></div>
+      </div>
+    </div>
   </header>
 
   <div id="messages" aria-live="polite">
-    <div class="message">
-      Hi! I'm Ask Troy. What's going on with your tree?
+    <div class="message-row assistant-row">
+      <img src="/assets/avatar-ask-troy.webp" alt="" width="36" height="36" class="chat-avatar" aria-hidden="true">
+      <div class="message">
+        Hi! I'm Ask Troy. What's going on with your tree?
+      </div>
     </div>
   </div>
 
@@ -193,12 +265,29 @@ const messages = document.querySelector("#messages");
 const send = document.querySelector("#send");
 
 function addMessage(role, text) {
+  const row = document.createElement("div");
+  row.className = "message-row " + (role === "user" ? "user-row" : "assistant-row");
+
+  if (role !== "user") {
+    const avatar = document.createElement("img");
+    avatar.src = "/assets/avatar-ask-troy.webp";
+    avatar.width = 36;
+    avatar.height = 36;
+    avatar.className = "chat-avatar";
+    avatar.alt = "";
+    avatar.setAttribute("aria-hidden", "true");
+    row.append(avatar);
+  }
+
   const item = document.createElement("div");
   item.className = "message " +
     (role === "user" ? "user" : "assistant");
   item.textContent = text;
-  messages.append(item);
+  row.append(item);
+
+  messages.append(row);
   messages.scrollTop = messages.scrollHeight;
+  return item;
 }
 
 function readPhoto(file) {
@@ -243,8 +332,14 @@ form.addEventListener("submit", async event => {
 
     addMessage("assistant", data.answer);
     if (Array.isArray(data.sources) && data.sources.length) {
-      const refs = document.createElement("p");
-      refs.className = "message";
+      const refRow = document.createElement("div");
+      refRow.className = "message-row assistant-row";
+      const spacer = document.createElement("div");
+      spacer.className = "chat-avatar-spacer";
+      refRow.append(spacer);
+
+      const refs = document.createElement("div");
+      refs.className = "message sources-card";
       const title = document.createElement("strong");
       title.textContent = "General reference topics (not a diagnosis):";
       refs.append(title, document.createElement("br"));
@@ -257,7 +352,8 @@ form.addEventListener("submit", async event => {
         anchor.textContent = source.title || "Reference";
         refs.append(anchor, document.createElement("br"));
       }
-      messages.append(refs);
+      refRow.append(refs);
+      messages.append(refRow);
       messages.scrollTop = messages.scrollHeight;
     }
     history.push(
