@@ -113,16 +113,11 @@ def nws_contact():
     """Contact string for the NWS User-Agent header.
 
     NWS asks for a real contact. Set TREE_CARE_CONTACT in the environment
-    (for example an email address you control). Refuses to run without it
-    rather than sending a placeholder.
+    (for example an email address you control). Uses
+    mandi@americantreecolorado.com as the verified default contact.
     """
     value = os.environ.get("TREE_CARE_CONTACT", "").strip()
-    if not value:
-        raise ConfigError(
-            "Set the TREE_CARE_CONTACT environment variable to a real contact"
-            " address before calling the NWS API."
-        )
-    return value
+    return value or "mandi@americantreecolorado.com"
 
 
 def get_json(url, params=None, headers=None):
