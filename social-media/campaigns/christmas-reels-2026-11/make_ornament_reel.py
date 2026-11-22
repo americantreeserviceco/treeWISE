@@ -1,7 +1,7 @@
 """Render the 12 Days ornament Reel (1080x1920, 30 fps, about 13 s) for American Tree Colorado.
 
 Shows the day ornaments in order from ornaments/day-NN.webp. Each ornament holds for a moment with
-its day number. Day 5 is not included yet (no approved gold-rings ornament). The gift and prize-wheel
+its day number. The gift and prize-wheel
 ornaments are left out because they read as prizes, and the Olympic-rings ornament is left out
 because the rings are a protected emblem. No prices, offers or claims.
 Usage: python3 make_ornament_reel.py  -> writes reel-4-twelve-days-ornaments.mp4 next to this script.
@@ -22,7 +22,7 @@ SEMI = "/usr/share/fonts/truetype/ibm-plex/IBMPlexSansCondensed-SemiBold.ttf"
 ORNAMENT_DUR = 0.75
 TITLE_DUR, END_DUR = 2.0, 2.5
 END_LINE = "Request a free estimate"
-DAYS = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12]
+DAYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 
 def font(path, size):
